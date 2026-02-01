@@ -1,8 +1,7 @@
-streamlit
-nltk
-spacy
-pandas
-matplotlib
-scikit-learn
-gensim
-wordcloud
+streamlit==1.31.0
+nltk==3.8.1
+pandas==2.1.4
+matplotlib==3.8.2
+scikit-learn==1.3.2
+gensim==4.3.2
+wordcloud==1.9.3
