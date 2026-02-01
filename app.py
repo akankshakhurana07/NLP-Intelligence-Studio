@@ -1,215 +1,106 @@
 import streamlit as st
-import nltk, spacy, re
-import pandas as pd
-import matplotlib.pyplot as plt
-from collections import Counter
-
-from nltk.tokenize import (
-    sent_tokenize, word_tokenize,
-    blankline_tokenize, WhitespaceTokenizer,
-    WordPunctTokenizer
-)
+import nltk
+from nltk.tokenize import word_tokenize
 from nltk.corpus import stopwords
-from nltk.stem import PorterStemmer, WordNetLemmatizer
-from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
-from gensim.models import Word2Vec
+from nltk.stem import WordNetLemmatizer
 from wordcloud import WordCloud
+import matplotlib.pyplot as plt
+import pandas as pd
 
-# ======================================================
-# PAGE CONFIG
-# ======================================================
+# ---------- NLTK SETUP ----------
+nltk.download("punkt")
+nltk.download("stopwords")
+nltk.download("wordnet")
+
+# ---------- PAGE CONFIG ----------
 st.set_page_config(
     page_title="NLP Intelligence Studio",
+    page_icon="🧠",
     layout="wide"
 )
 
-# ======================================================
-# SAFE DOWNLOADS (STREAMLIT CLOUD FIX)
-# ======================================================
-@st.cache_resource
-def setup_nltk():
-    nltk.download("punkt")
-    nltk.download("stopwords")
-    nltk.download("wordnet")
-    nltk.download("averaged_perceptron_tagger")
-
-setup_nltk()
-
-@st.cache_resource
-def load_spacy():
-    try:
-        return spacy.load("en_core_web_sm")
-    except:
-        from spacy.cli import download
-        download("en_core_web_sm")
-        return spacy.load("en_core_web_sm")
-
-nlp = load_spacy()
-
-# ======================================================
-# UI STYLING
-# ======================================================
+# ---------- STYLING ----------
 st.markdown("""
 <style>
-body {background-color:#0f172a;}
-h1,h2,h3 {color:#38bdf8;}
-.card {
-background:#020617;
-padding:18px;
-border-radius:14px;
-color:white;
-box-shadow:0 0 20px rgba(56,189,248,0.35);
+body {
+    background: linear-gradient(135deg,#020617,#020617);
 }
-.metric {
-font-size:30px;
-font-weight:800;
-color:#22d3ee;
+.big-title {
+    font-size:48px;
+    font-weight:800;
+    background: linear-gradient(90deg,#22d3ee,#38bdf8);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+.card {
+    background:#020617;
+    padding:20px;
+    border-radius:15px;
+    box-shadow:0 0 20px rgba(56,189,248,0.2);
 }
 </style>
 """, unsafe_allow_html=True)
 
-# ======================================================
-# TITLE
-# ======================================================
-st.title("🧠 NLP Intelligence Studio — ENGINEER LEVEL")
-st.success("✅ App Loaded Successfully")
-st.caption("NLU • Linguistic Analysis • Feature Engineering • Semantic Modeling • Explainability")
+# ---------- TITLE ----------
+st.markdown('<div class="big-title">🧠 NLP Intelligence Studio</div>', unsafe_allow_html=True)
+st.caption("Advanced Natural Language Processing Playground")
 
-text = st.text_area("✍️ Paste Paragraph", height=220)
+# ---------- INPUT ----------
+text = st.text_area(
+    "✍️ Enter your text",
+    height=200,
+    placeholder="Paste or type any English text here..."
+)
 
-stop_words = set(stopwords.words("english"))
-stemmer = PorterStemmer()
-lemmatizer = WordNetLemmatizer()
-
-# ======================================================
-# TEXT STATISTICS
-# ======================================================
 if text.strip():
-    words = word_tokenize(text)
-    sentences = sent_tokenize(text)
 
-    c1, c2, c3, c4 = st.columns(4)
-    c1.markdown(f"<div class='card'>Total Words<br><span class='metric'>{len(words)}</span></div>", unsafe_allow_html=True)
-    c2.markdown(f"<div class='card'>Sentences<br><span class='metric'>{len(sentences)}</span></div>", unsafe_allow_html=True)
-    c3.markdown(f"<div class='card'>Characters<br><span class='metric'>{len(text)}</span></div>", unsafe_allow_html=True)
-    c4.markdown(f"<div class='card'>Unique Words<br><span class='metric'>{len(set(words))}</span></div>", unsafe_allow_html=True)
+    st.markdown("---")
 
-# ======================================================
-# TOKENIZATION ANALYSIS
-# ======================================================
-if text.strip():
-    st.header("📊 Tokenization Analysis")
+    # ---------- TOKENIZATION ----------
+    tokens = word_tokenize(text)
+    st.subheader("🔹 Tokenization")
+    st.write(tokens)
 
-    tokenizers = {
-        "Sentence": sent_tokenize(text),
-        "Word": word_tokenize(text),
-        "Blank Line": blankline_tokenize(text),
-        "Whitespace": WhitespaceTokenizer().tokenize(text),
-        "WordPunct": WordPunctTokenizer().tokenize(text)
-    }
+    # ---------- STOPWORDS ----------
+    stop_words = set(stopwords.words("english"))
+    filtered = [w for w in tokens if w.lower() not in stop_words and w.isalpha()]
+    st.subheader("🔹 Stopword Removal")
+    st.write(filtered)
 
-    stats = []
-    for name, toks in tokenizers.items():
-        if toks:
-            stats.append({
-                "Tokenizer": name,
-                "Total Tokens": len(toks),
-                "Unique Tokens": len(set(toks)),
-                "Avg Token Length": round(sum(len(t) for t in toks) / len(toks), 2)
-            })
+    # ---------- LEMMATIZATION ----------
+    lemmatizer = WordNetLemmatizer()
+    lemmas = [lemmatizer.lemmatize(w) for w in filtered]
+    st.subheader("🔹 Lemmatization")
+    st.write(lemmas)
 
-    st.dataframe(pd.DataFrame(stats))
+    # ---------- WORD FREQUENCY ----------
+    freq = nltk.FreqDist(lemmas)
+    df = pd.DataFrame(freq.most_common(10), columns=["Word", "Frequency"])
 
-# ======================================================
-# NLU
-# ======================================================
-if text.strip():
-    st.header("🧠 Natural Language Understanding")
+    st.subheader("🔹 Top 10 Word Frequency")
+    st.dataframe(df, use_container_width=True)
 
-    filtered = [w.lower() for w in words if w.lower() not in stop_words and w.isalpha()]
+    # ---------- WORDCLOUD ----------
+    if len(text) < 5000:
+        st.subheader("🔹 Word Cloud")
+        wc = WordCloud(
+            width=900,
+            height=400,
+            background_color="#020617",
+            colormap="cool"
+        ).generate(" ".join(lemmas))
 
-    col1, col2 = st.columns(2)
+        fig, ax = plt.subplots()
+        ax.imshow(wc)
+        ax.axis("off")
+        st.pyplot(fig)
 
-    with col1:
-        st.subheader("Stemming")
-        st.write([stemmer.stem(w) for w in filtered][:40])
+else:
+    st.info("👆 Enter some text to activate NLP analysis")
 
-    with col2:
-        st.subheader("Lemmatization")
-        st.write([lemmatizer.lemmatize(w) for w in filtered][:40])
+# ---------- FOOTER ----------
+st.markdown("---")
+st.caption("👩‍💻 Built by **Akanksha Khurana** | Streamlit NLP Project")
 
-    st.subheader("POS Tag Distribution")
-    pos_tags = nltk.pos_tag(filtered)
-    pos_freq = Counter(tag for _, tag in pos_tags)
-    st.bar_chart(pd.DataFrame(pos_freq.values(), index=pos_freq.keys()))
-
-    st.subheader("Named Entity Recognition (NER)")
-    doc = nlp(text)
-    st.write([(ent.text, ent.label_) for ent in doc.ents])
-
-# ======================================================
-# FEATURE ENGINEERING
-# ======================================================
-if text.strip():
-    st.header("⚙️ Feature Engineering")
-
-    corpus = []
-    for s in sentences:
-        review = re.sub("[^a-zA-Z]", " ", s).lower().split()
-        review = [lemmatizer.lemmatize(w) for w in review if w not in stop_words]
-        corpus.append(" ".join(review))
-
-    st.subheader("Bag of Words (BoW)")
-    cv = CountVectorizer(max_features=15)
-    bow = cv.fit_transform(corpus).toarray()
-    st.dataframe(pd.DataFrame(bow, columns=cv.get_feature_names_out()))
-
-    st.subheader("TF-IDF Importance")
-    tf = TfidfVectorizer()
-    tfidf = tf.fit_transform([text]).toarray()[0]
-    df_imp = pd.DataFrame({
-        "Word": tf.get_feature_names_out(),
-        "Score": tfidf
-    }).sort_values("Score", ascending=False).head(10)
-    st.dataframe(df_imp)
-
-    st.subheader("Word2Vec Semantic Space")
-    if len(corpus) > 1:
-        w2v_model = Word2Vec([w.split() for w in corpus],
-                             vector_size=100, window=5, min_count=1)
-
-        probe = st.text_input("Semantic probe word")
-        if probe and probe in w2v_model.wv:
-            st.dataframe(pd.DataFrame(
-                w2v_model.wv.most_similar(probe),
-                columns=["Word", "Similarity"]
-            ))
-
-# ======================================================
-# WORDCLOUD + NLG
-# ======================================================
-if text.strip():
-    st.header("✨ Visual Intelligence")
-
-    wc = WordCloud(
-        width=900,
-        height=400,
-        background_color="#020617",
-        colormap="cool"
-    ).generate(text)
-
-    plt.figure(figsize=(10, 4))
-    plt.imshow(wc)
-    plt.axis("off")
-    st.pyplot(plt.gcf())
-    plt.clf()
-
-    st.subheader("Auto Insight Generation")
-    top_terms = [w for w, _ in Counter(filtered).most_common(6)]
-    st.write(
-        "This document semantically focuses on "
-        + ", ".join(top_terms)
-        + ", indicating dominant conceptual themes."
-    )
 
 
