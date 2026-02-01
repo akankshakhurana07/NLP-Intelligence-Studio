@@ -1,5 +1,6 @@
 import streamlit as st
 import nltk
+import os
 from nltk.tokenize import word_tokenize
 from nltk.corpus import stopwords
 from nltk.stem import WordNetLemmatizer
@@ -7,23 +8,37 @@ from wordcloud import WordCloud
 import matplotlib.pyplot as plt
 import pandas as pd
 
-# ---------- NLTK SETUP ----------
-nltk.download("punkt")
-nltk.download("stopwords")
-nltk.download("wordnet")
+# ======================================================
+# STREAMLIT SAFE NLTK SETUP
+# ======================================================
+NLTK_DATA_DIR = "/tmp/nltk_data"
+os.makedirs(NLTK_DATA_DIR, exist_ok=True)
+nltk.data.path.append(NLTK_DATA_DIR)
 
-# ---------- PAGE CONFIG ----------
+@st.cache_resource
+def setup_nltk():
+    nltk.download("punkt", download_dir=NLTK_DATA_DIR, quiet=True)
+    nltk.download("stopwords", download_dir=NLTK_DATA_DIR, quiet=True)
+    nltk.download("wordnet", download_dir=NLTK_DATA_DIR, quiet=True)
+
+setup_nltk()
+
+# ======================================================
+# PAGE CONFIG (MUST BE FIRST STREAMLIT COMMAND)
+# ======================================================
 st.set_page_config(
     page_title="NLP Intelligence Studio",
     page_icon="🧠",
     layout="wide"
 )
 
-# ---------- STYLING ----------
+# ======================================================
+# STYLING
+# ======================================================
 st.markdown("""
 <style>
 body {
-    background: linear-gradient(135deg,#020617,#020617);
+    background-color:#020617;
 }
 .big-title {
     font-size:48px;
@@ -32,20 +47,18 @@ body {
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
 }
-.card {
-    background:#020617;
-    padding:20px;
-    border-radius:15px;
-    box-shadow:0 0 20px rgba(56,189,248,0.2);
-}
 </style>
 """, unsafe_allow_html=True)
 
-# ---------- TITLE ----------
+# ======================================================
+# TITLE
+# ======================================================
 st.markdown('<div class="big-title">🧠 NLP Intelligence Studio</div>', unsafe_allow_html=True)
 st.caption("Advanced Natural Language Processing Playground")
 
-# ---------- INPUT ----------
+# ======================================================
+# INPUT
+# ======================================================
 text = st.text_area(
     "✍️ Enter your text",
     height=200,
@@ -53,8 +66,6 @@ text = st.text_area(
 )
 
 if text.strip():
-
-    st.markdown("---")
 
     # ---------- TOKENIZATION ----------
     tokens = word_tokenize(text)
@@ -73,34 +84,9 @@ if text.strip():
     st.subheader("🔹 Lemmatization")
     st.write(lemmas)
 
-    # ---------- WORD FREQUENCY ----------
-    freq = nltk.FreqDist(lemmas)
-    df = pd.DataFrame(freq.most_common(10), columns=["Word", "Frequency"])
+    # ---------- WORD
 
-    st.subheader("🔹 Top 10 Word Frequency")
-    st.dataframe(df, use_container_width=True)
 
-    # ---------- WORDCLOUD ----------
-    if len(text) < 5000:
-        st.subheader("🔹 Word Cloud")
-        wc = WordCloud(
-            width=900,
-            height=400,
-            background_color="#020617",
-            colormap="cool"
-        ).generate(" ".join(lemmas))
-
-        fig, ax = plt.subplots()
-        ax.imshow(wc)
-        ax.axis("off")
-        st.pyplot(fig)
-
-else:
-    st.info("👆 Enter some text to activate NLP analysis")
-
-# ---------- FOOTER ----------
-st.markdown("---")
-st.caption("👩‍💻 Built by **Akanksha Khurana** | Streamlit NLP Project")
 
 
 
